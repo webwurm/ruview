@@ -1,0 +1,23 @@
+# RuView Sensing-Server für OpenMediaVault (Compose-Plugin)
+# Schritt 1: simulierte Daten. Für den ESP32-S3 später CSI_SOURCE=esp32 setzen.
+services:
+  ruview:
+    image: ruvnet/wifi-densepose:latest
+    container_name: ruview
+    restart: unless-stopped
+    ports:
+      - "3000:3000"       # Web-UI + REST-API + WebSocket
+      - "5005:5005/udp"   # CSI-Daten vom ESP32 (ab Schritt 2)
+    environment:
+      - RUST_LOG=info
+      - CSI_SOURCE=${CSI_SOURCE:-simulated}
+      - RUVIEW_API_TOKEN=${RUVIEW_API_TOKEN:?RUVIEW_API_TOKEN fehlt in der .env}
+      - SENSING_ALLOWED_HOSTS=${SERVER_IP:?SERVER_IP fehlt in der .env}
+      - RUVIEW_UDP_ALLOW=${LAN_SUBNET:-192.168.1.0/24}
+      - MODELS_DIR=/app/data/models
+    volumes:
+      - ./data:/app/data   # Aufnahmen, Modelle, Kalibrierung
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
