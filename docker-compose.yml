@@ -27,6 +27,7 @@ services:
     # Baut die Demo direkt aus dem GitHub-Repo (Ordner web/).
     build: https://github.com/webwurm/ruview.git#main:web
     image: ruview-demo:latest
+    pull_policy: build   # nur lokal bauen, nicht aus Docker Hub ziehen
     container_name: ruview-demo
     restart: unless-stopped
     depends_on:

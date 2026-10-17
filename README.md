@@ -39,7 +39,7 @@ curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3080/api/v1/nodes
 ## Schritt 3: Demo „Wer ist wo“
 
 Die Compose-Datei startet neben RuView einen zweiten Container `demo`, den OMV direkt aus
-dem Ordner [`web/`](web/) dieses Repos baut. Danach `http://<SERVER_IP>:3090/` öffnen.
+dem Ordner [`web/`](web/) dieses Repos baut (dafür muss `git` auf dem Server installiert sein: `apt install git`). Danach `http://<SERVER_IP>:3090/` öffnen.
 
 - Zeigt Personen auf dem Grundriss, zählt sie pro Raum und blendet auf Wunsch die
   RuView-Signalkarte und Bewegungsspuren ein.
