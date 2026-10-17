@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wer ist wo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Wer ist wo</h1>
+      <p class="sub" id="plan-name">RuView-Demo</p>
+    </div>
+    <div class="status">
+      <span class="chip" id="source-chip">Verbinde …</span>
+      <span class="age" id="age"></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="plan card">
+      <div class="plan-head">
+        <h2>Grundriss</h2>
+        <label class="toggle"><input type="checkbox" id="show-field"> Signalkarte</label>
+        <label class="toggle"><input type="checkbox" id="show-trails"> Spuren</label>
+      </div>
+      <svg id="plan" role="img" aria-label="Grundriss mit erkannten Personen"></svg>
+      <p class="legend">
+        <span class="dot person"></span> Person (RuView-Schätzung)
+        <span class="dot node"></span> Sensor
+      </p>
+    </section>
+
+    <aside>
+      <section class="card">
+        <h2>Anwesenheit</h2>
+        <div class="big" id="presence">–</div>
+        <div class="meta" id="motion">–</div>
+        <div class="bar"><div id="confidence-bar"></div></div>
+        <div class="meta" id="confidence">Konfidenz –</div>
+      </section>
+
+      <section class="card">
+        <h2>Personen</h2>
+        <div class="pair">
+          <div><div class="big" id="est-persons">–</div><div class="meta">geschätzte Anzahl</div></div>
+          <div><div class="big" id="tracked-persons">–</div><div class="meta">verfolgte Positionen</div></div>
+        </div>
+        <p class="warn" id="count-warn" hidden>Die beiden Werte widersprechen sich. RuView zählt und verortet getrennt.</p>
+      </section>
+
+      <section class="card">
+        <h2>Räume</h2>
+        <ul id="rooms"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Bewegung (60 s)</h2>
+        <canvas id="spark" height="60"></canvas>
+        <dl class="raw" id="raw"></dl>
+      </section>
+
+      <details class="card honest">
+        <summary>Wie belastbar ist das?</summary>
+        <p>Mit einem Sensor misst RuView vor allem, <em>ob</em> sich etwas bewegt. Die Positionen stammen aus Spitzen der Signalkarte, und die ordnet Subträger nur Winkeln zu, nicht echten Orten. Echte Ortung braucht drei oder mehr Sensoren und Kalibrierung. Namen erkennt RuView nicht.</p>
+      </details>
+    </aside>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

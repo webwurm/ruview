@@ -1,0 +1,14 @@
+{
+  "name": "Meine Wohnung",
+  "width": 11,
+  "height": 9,
+  "ruview_origin": [5.5, 4.5],
+  "rooms": [
+    { "name": "Wohnzimmer", "polygon": [[0.5, 0.5], [6, 0.5], [6, 5], [0.5, 5]] },
+    { "name": "Küche", "polygon": [[6, 0.5], [10.5, 0.5], [10.5, 4], [6, 4]] },
+    { "name": "Flur", "polygon": [[6, 4], [10.5, 4], [10.5, 5], [6, 5]] },
+    { "name": "Schlafzimmer", "polygon": [[0.5, 5], [5, 5], [5, 8.5], [0.5, 8.5]] },
+    { "name": "Bad", "polygon": [[5, 5], [7.5, 5], [7.5, 8.5], [5, 8.5]] },
+    { "name": "Arbeitszimmer", "polygon": [[7.5, 5], [10.5, 5], [10.5, 8.5], [7.5, 8.5]] }
+  ]
+}

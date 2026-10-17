@@ -1,0 +1,23 @@
+# Liefert die Demo aus und reicht lesende API-Aufrufe an RuView weiter.
+# Der Token bleibt auf dem Server, der Browser braucht keinen.
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+
+    location = /floorplan.json {
+        add_header Cache-Control "no-store";
+    }
+
+    location /api/ {
+        limit_except GET { deny all; }
+        proxy_pass ${RUVIEW_URL};
+        proxy_set_header Host localhost;
+        proxy_set_header Authorization "Bearer ${RUVIEW_API_TOKEN}";
+        proxy_read_timeout 10s;
+    }
+
+    location = /health {
+        proxy_pass ${RUVIEW_URL};
+        proxy_set_header Host localhost;
+    }
+}

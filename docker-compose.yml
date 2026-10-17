@@ -1,5 +1,6 @@
 # RuView Sensing-Server für OpenMediaVault (Compose-Plugin)
-# Schritt 1: simulierte Daten. Für den ESP32-S3 später CSI_SOURCE=esp32 setzen.
+# Simulierte Daten, bis ein ESP32-S3 sendet; dann CSI_SOURCE=esp32 setzen.
+# Zwei Dienste: RuView selbst und die eigene Demo "Wer ist wo".
 services:
   ruview:
     image: ruvnet/wifi-densepose:latest
@@ -21,3 +22,17 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+
+  demo:
+    # Baut die Demo direkt aus dem GitHub-Repo (Ordner web/).
+    build: https://github.com/webwurm/ruview.git#main:web
+    image: ruview-demo:latest
+    container_name: ruview-demo
+    restart: unless-stopped
+    depends_on:
+      - ruview
+    ports:
+      - "${DEMO_PORT:-3090}:80"   # Demo im Browser
+    environment:
+      - RUVIEW_URL=http://ruview:3000
+      - RUVIEW_API_TOKEN=${RUVIEW_API_TOKEN}
