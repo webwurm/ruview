@@ -6,7 +6,7 @@ services:
     container_name: ruview
     restart: unless-stopped
     ports:
-      - "3000:3000"       # Web-UI + REST-API + WebSocket
+      - "${RUVIEW_PORT:-3080}:3000"   # Web-UI + REST-API + WebSocket (Port am Server)
       - "5005:5005/udp"   # CSI-Daten vom ESP32 (ab Schritt 2)
     environment:
       - RUST_LOG=info

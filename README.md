@@ -18,8 +18,9 @@ eigenen Web-Oberfläche auf einem Grundriss anzeigen.
 2. Ins Feld *Environment* den Inhalt von [`.env.example`](.env.example) kopieren und anpassen:
    - `RUVIEW_API_TOKEN`: langer Zufallswert, z. B. `openssl rand -hex 32`
    - `SERVER_IP`: IP-Adresse des OMV-Servers
+   - `RUVIEW_PORT`: Port am Server, Standard `3080`
    - `LAN_SUBNET`: dein Heimnetz, z. B. `192.168.1.0/24`
-3. Starten und `http://<SERVER_IP>:3000/ui/index.html` öffnen. Den Token einmal unter
+3. Starten und `http://<SERVER_IP>:3080/ui/index.html` öffnen. Den Token einmal unter
    *Settings → API Access* eintragen.
 
 Wichtig (laut RuView-Doku):
@@ -30,8 +31,8 @@ Wichtig (laut RuView-Doku):
 Nützliche API-Aufrufe:
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3000/api/v1/sensing/latest
-curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3000/api/v1/nodes
+curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3080/api/v1/sensing/latest
+curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3080/api/v1/nodes
 # Live-Stream per WebSocket: ws://<SERVER_IP>:3000/ws/sensing
 ```
 
