@@ -57,7 +57,8 @@ function centroid(polygon) {
 
 function buildPlan() {
   const svg = $('plan');
-  svg.setAttribute('viewBox', `0 0 ${plan.width} ${plan.height}`);
+  // 1 m Rand, damit Personen knapp außerhalb (Balkon, Garten) sichtbar bleiben.
+  svg.setAttribute('viewBox', `-1 -1 ${plan.width + 2} ${plan.height + 2}`);
   $('plan-name').textContent = plan.name;
 
   const rooms = el('g', { id: 'room-shapes' }, svg);
@@ -68,7 +69,7 @@ function buildPlan() {
     room.countLabel = el('text', { class: 'room-count', x: cx, y: cy + 0.38, 'text-anchor': 'middle' }, svg);
   }
   const clip = el('clipPath', { id: 'plan-clip' }, el('defs', {}, svg));
-  el('rect', { x: 0, y: 0, width: plan.width, height: plan.height }, clip);
+  el('rect', { x: -1, y: -1, width: plan.width + 2, height: plan.height + 2 }, clip);
   el('g', { id: 'field', 'clip-path': 'url(#plan-clip)' }, svg);
   el('g', { id: 'trails' }, svg);
   el('g', { id: 'nodes' }, svg);
@@ -251,8 +252,20 @@ async function pollLatest() {
   }
 }
 
+// Der eigene Grundriss liegt nur auf dem Server (config/, per Volume eingebunden);
+// fehlt er, zeigt die Demo die Beispielwohnung aus dem Repo.
+async function loadPlan() {
+  for (const url of ['config/floorplan.json', 'floorplan.json']) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) return await res.json();
+    } catch { /* nächste Quelle versuchen */ }
+  }
+  throw new Error('Kein Grundriss gefunden');
+}
+
 async function start() {
-  plan = await (await fetch('floorplan.json')).json();
+  plan = await loadPlan();
   buildPlan();
   if (useMock) {
     setSource('mock');

@@ -34,6 +34,10 @@ services:
       - ruview
     ports:
       - "${DEMO_PORT:-3090}:80"   # Demo im Browser
+    volumes:
+      # Eigener Grundriss: demo-config/floorplan.json neben dieser Datei ablegen.
+      # Bleibt auf dem Server, nicht im Repo. Fehlt er, erscheint die Beispielwohnung.
+      - ./demo-config:/usr/share/nginx/html/config:ro
     environment:
       - RUVIEW_URL=http://ruview:3000
       - RUVIEW_API_TOKEN=${RUVIEW_API_TOKEN}

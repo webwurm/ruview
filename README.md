@@ -45,9 +45,13 @@ dem Ordner [`web/`](web/) dieses Repos baut (dafür muss `git` auf dem Server in
   RuView-Signalkarte und Bewegungsspuren ein.
 - Der Browser braucht keinen Token: Der Demo-Container reicht nur lesende API-Aufrufe
   (GET) an RuView weiter und hängt den Token selbst an.
-- Grundriss anpassen: [`web/public/floorplan.json`](web/public/floorplan.json). Alle Angaben
-  in Metern, Räume als Polygone. `ruview_origin` legt fest, wo RuViews Nullpunkt im
-  Grundriss liegt. Nach einer Änderung in OMV den Stack neu bauen (*Pull*/*Build* und *Up*).
+- Eigener Grundriss: Er gehört nicht ins Repo. Lege ihn auf dem Server als
+  `demo-config/floorplan.json` neben die Compose-Datei; der Ordner wird in den Container
+  eingebunden. Den Ordner findest du mit
+  `docker inspect ruview --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}'`.
+  Format wie die Beispielwohnung in [`web/public/floorplan.json`](web/public/floorplan.json):
+  alle Angaben in Metern, Räume als Polygone, `ruview_origin` legt fest, wo RuViews Nullpunkt
+  im Grundriss liegt. Nach einer Änderung reicht ein Neuladen im Browser.
 - Ohne Server ausprobieren: `web/public/` mit einem beliebigen Webserver ausliefern und
   `index.html?mock` öffnen (z. B. `cd web/public && python3 -m http.server`).
 
