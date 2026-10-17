@@ -33,7 +33,7 @@ Nützliche API-Aufrufe:
 ```bash
 curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3080/api/v1/sensing/latest
 curl -H "Authorization: Bearer $TOKEN" http://<SERVER_IP>:3080/api/v1/nodes
-# Live-Stream per WebSocket: ws://<SERVER_IP>:3000/ws/sensing
+# Live-Stream per WebSocket: ws://<SERVER_IP>:3080/ws/sensing
 ```
 
 ## Grenzen
