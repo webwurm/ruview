@@ -16,7 +16,7 @@ eigenen Web-Oberfläche auf einem Grundriss anzeigen.
 1. In OMV unter *Services → Compose → Files* eine neue Datei anlegen und den Inhalt von
    [`docker-compose.yml`](docker-compose.yml) einfügen.
 2. Ins Feld *Environment* den Inhalt von [`.env.example`](.env.example) kopieren und anpassen:
-   - `RUVIEW_API_TOKEN`: langer Zufallswert, z. B. `openssl rand -hex 32`
+   - `RUVIEW_API_TOKEN`: langer Zufallswert, z. B. `openssl rand -hex 32`. Nur Buchstaben a-z/A-Z und Ziffern, keine Umlaute (sonst lehnt der Server den Token aus dem Browser ab).
    - `SERVER_IP`: IP-Adresse des OMV-Servers
    - `RUVIEW_PORT`: Port am Server, Standard `3080`
    - `LAN_SUBNET`: dein Heimnetz, z. B. `192.168.1.0/24`
