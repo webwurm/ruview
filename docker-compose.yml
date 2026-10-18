@@ -14,7 +14,9 @@ services:
       - CSI_SOURCE=${CSI_SOURCE:-simulated}
       - RUVIEW_API_TOKEN=${RUVIEW_API_TOKEN:?RUVIEW_API_TOKEN fehlt in der .env}
       - SENSING_ALLOWED_HOSTS=${SERVER_IP:?SERVER_IP fehlt in der .env}
-      - RUVIEW_UDP_ALLOW=${LAN_SUBNET:-192.168.1.0/24}
+      # Docker leitet die ESP32-Pakete über das Gateway des Stack-Netzes weiter
+      # (Absender dann 172.31.250.1 statt der Board-IP), deshalb beide zulassen.
+      - RUVIEW_UDP_ALLOW=${LAN_SUBNET:-192.168.1.0/24},172.31.250.1/32
       - MODELS_DIR=/app/data/models
     volumes:
       - ./data:/app/data   # Aufnahmen, Modelle, Kalibrierung
@@ -41,3 +43,11 @@ services:
     environment:
       - RUVIEW_URL=http://ruview:3000
       - RUVIEW_API_TOKEN=${RUVIEW_API_TOKEN}
+
+networks:
+  default:
+    # Festes Netz, damit das Gateway oben im UDP-Allowlist-Eintrag stimmt.
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24
+          gateway: 172.31.250.1
