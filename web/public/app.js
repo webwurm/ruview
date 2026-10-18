@@ -2,6 +2,7 @@ import { mockLatest } from './mock.js';
 
 const POLL_MS = 500;
 const HEALTH_MS = 5000;
+const NODES_MS = 2000;
 const TRAIL_LEN = 24;
 // Eigene Verfolgung: RuView-IDs wechseln ständig, die Positionen springen.
 const MATCH_RADIUS_M = 2.5;   // so weit darf eine Erkennung vom letzten Punkt entfernt sein
@@ -373,6 +374,26 @@ async function pollHealth() {
   }
 }
 
+// Was jeder Sensor selbst zählt. RuView meldet als Gesamtzahl den höchsten dieser Werte.
+function renderNodes(nodes = []) {
+  $('per-node').replaceChildren(...nodes.map((n) => {
+    const li = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = `Sensor ${n.node_id}${n.status === 'stale' ? ' (keine Daten)' : ''}`;
+    const value = document.createElement('strong');
+    value.textContent = `zählt ${n.person_count ?? '–'}`;
+    li.append(label, value);
+    return li;
+  }));
+}
+
+async function pollNodes() {
+  try {
+    const res = await fetch('/api/v1/nodes');
+    if (res.ok) renderNodes((await res.json()).nodes);
+  } catch { /* nächster Versuch */ }
+}
+
 async function pollLatest() {
   try {
     const res = await fetch('/api/v1/sensing/latest');
@@ -404,12 +425,15 @@ async function start() {
     setSource('mock');
     const t0 = performance.now();
     setInterval(() => render(mockLatest((performance.now() - t0) / 1000)), POLL_MS);
+    renderNodes([1, 2, 3].map((id) => ({ node_id: id, status: 'active', person_count: id === 2 ? 4 : 1 })));
     return;
   }
   pollHealth();
   setInterval(pollHealth, HEALTH_MS);
   pollLatest();
   setInterval(pollLatest, POLL_MS);
+  pollNodes();
+  setInterval(pollNodes, NODES_MS);
 }
 
 start();

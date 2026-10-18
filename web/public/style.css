@@ -124,3 +124,5 @@ aside { display: flex; flex-direction: column; gap: 16px; }
   main { grid-template-columns: 1fr; padding: 0 16px 16px; }
   header { padding: 16px; }
 }
+.per-node { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; color: var(--muted); }
+.per-node li { display: flex; justify-content: space-between; padding: 2px 0; }
