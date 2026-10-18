@@ -35,7 +35,9 @@ wget https://github.com/webwurm/ruview/raw/main/firmware/dist/ruview-esp32.bin
 wget https://raw.githubusercontent.com/ruvnet/RuView/a1ca023ee872683d160250d47ae3d4d228af55a0/firmware/esp32-csi-node/provision.py
 ```
 
-Board per USB anstecken (meist `/dev/ttyUSB0`, prüfen mit `ls /dev/ttyUSB*`), dann:
+Board per USB anstecken (meist `/dev/ttyUSB0`, prüfen mit `ls /dev/ttyUSB*`).
+Meldet esptool `Permission denied`, wirkt die Gruppe `dialout` noch nicht (erst nach
+neuem Anmelden); bis dahin hilft `sudo chmod a+rw /dev/ttyUSB0`. Dann:
 
 ```bash
 ~/esp/bin/python -m esptool --chip esp32 --port /dev/ttyUSB0 -b 460800 write_flash 0x0 ruview-esp32.bin
