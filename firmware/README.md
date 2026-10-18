@@ -8,7 +8,7 @@ offizielle RuView-Firmware (Version 0.8.14) zusätzlich für den **klassischen E
 
 | Chip | Baut | Im Emulator getestet | Am echten Board getestet |
 |---|---|---|---|
-| ESP32 (WROOM-32D) | ja | ja, 40 s mit Test-CSI-Daten stabil (Kantenverarbeitung auf Kern 1) | noch nicht |
+| ESP32 (WROOM-32D) | ja | ja, 40 s mit Test-CSI-Daten stabil (Kantenverarbeitung auf Kern 1) | ja: WLAN, CSI-Erfassung und UDP-Versand laufen (2026-10-18) |
 | ESP32-C3 | ja | nein | noch nicht |
 
 Unterschiede zur S3-Firmware:
