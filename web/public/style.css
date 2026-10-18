@@ -72,6 +72,15 @@ aside { display: flex; flex-direction: column; gap: 16px; }
 .plan { display: flex; flex-direction: column; }
 .plan-head { display: flex; align-items: center; gap: 16px; }
 .plan-head h2 { margin: 0; margin-right: auto; }
+.plan-head { flex-wrap: wrap; }
+#place-sensor {
+  font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer;
+}
+#place-sensor.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hint { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.hint code { font-size: 12px; background: var(--room); padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+#smoothing { width: 90px; }
 .toggle { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
 #plan { width: 100%; height: auto; margin-top: 12px; }
 #plan .room { fill: var(--room); stroke: var(--line); stroke-width: .04; transition: fill .3s; }

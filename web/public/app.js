@@ -3,6 +3,11 @@ import { mockLatest } from './mock.js';
 const POLL_MS = 500;
 const HEALTH_MS = 5000;
 const TRAIL_LEN = 24;
+// Eigene Verfolgung: RuView-IDs wechseln ständig, die Positionen springen.
+const MATCH_RADIUS_M = 2.5;   // so weit darf eine Erkennung vom letzten Punkt entfernt sein
+const CONFIRM_HITS = 3;       // erst nach so vielen Treffern als Person zählen
+const MAX_MISSES = 4;         // nach so vielen Aussetzern (je 0,5 s) verwerfen
+const SENSOR_KEY = 'ruview-demo-sensor';
 const SPARK_SECONDS = 60;
 
 // RuView rechnet Signalkarten-Zellen so in Meter um (field_localize.rs).
@@ -21,7 +26,10 @@ const useMock = new URLSearchParams(location.search).has('mock');
 const $ = (id) => document.getElementById(id);
 
 let plan;
-const tracks = new Map(); // person id -> { points: [[x,y]], SVG-Elemente }
+let origin = [0, 0];      // wo RuViews Nullpunkt im Grundriss liegt
+let placing = false;      // Sensor wird gerade per Klick gesetzt
+let nextTrackNo = 1;
+const tracks = [];        // { no, pos: [x,y], hits, misses, points, SVG-Elemente }
 const motionHistory = []; // [timestamp, motion_band_power]
 
 function el(name, attrs = {}, parent) {
@@ -33,8 +41,59 @@ function el(name, attrs = {}, parent) {
 
 // RuView-Weltkoordinaten (x, z in Metern) -> Grundriss-Koordinaten.
 function toPlan([x, , z]) {
-  return [plan.ruview_origin[0] + x, plan.ruview_origin[1] + z];
+  return [origin[0] + x, origin[1] + z];
 }
+
+// Wo steht der Sensor? Lokal gesetzt (Klick) vor floorplan.json vor gar nicht.
+function sensorPlacement() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SENSOR_KEY));
+    if (Array.isArray(saved)) return saved;
+  } catch { /* kein gespeicherter Wert */ }
+  return plan.sensors ?? [];
+}
+
+// Liegt ein Sensor im Grundriss fest, wird RuViews Koordinatensystem so verschoben,
+// dass RuViews Sensorposition genau dort landet. Sonst gilt ruview_origin.
+function updateOrigin(nodes = []) {
+  const placed = sensorPlacement();
+  for (const n of nodes) {
+    const s = placed.find((p) => p.node_id === n.node_id);
+    if (s && n.position) {
+      origin = [s.position[0] - n.position[0], s.position[1] - n.position[2]];
+      return;
+    }
+  }
+  origin = plan.ruview_origin ?? [plan.width / 2, plan.height / 2];
+}
+
+function svgPoint(evt) {
+  const svg = $('plan');
+  const pt = new DOMPoint(evt.clientX, evt.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  return [Math.round(pt.x * 10) / 10, Math.round(pt.y * 10) / 10];
+}
+
+function setupSensorPlacement() {
+  const btn = $('place-sensor');
+  btn.addEventListener('click', () => {
+    placing = !placing;
+    btn.classList.toggle('active', placing);
+    $('place-hint').hidden = !placing;
+  });
+  $('plan').addEventListener('click', (evt) => {
+    if (!placing) return;
+    placing = false;
+    btn.classList.remove('active');
+    $('place-hint').hidden = true;
+    const sensors = [{ node_id: lastNodeId ?? 1, position: svgPoint(evt) }];
+    try { localStorage.setItem(SENSOR_KEY, JSON.stringify(sensors)); } catch { /* nur für diese Sitzung */ }
+    plan.sensors = sensors;
+    const snippet = $('sensor-snippet');
+    snippet.hidden = false;
+    snippet.querySelector('code:last-of-type').textContent = `"sensors": ${JSON.stringify(sensors)}`;
+  });
+}
+let lastNodeId = null;
 
 function pointInPolygon([px, py], polygon) {
   let inside = false;
@@ -99,47 +158,77 @@ function drawNodes(nodes = []) {
   g.replaceChildren();
   for (const n of nodes) {
     const [x, y] = toPlan(n.position ?? [0, 0, 0]);
+    const placed = sensorPlacement().some((p) => p.node_id === n.node_id);
     el('rect', { class: 'node', x: x - 0.12, y: y - 0.12, width: 0.24, height: 0.24, rx: 0.05 }, g);
-    el('text', { class: 'node-label', x: x + 0.2, y: y + 0.08 }, g).textContent = `Sensor ${n.node_id}`;
+    el('text', { class: 'node-label', x: x + 0.2, y: y + 0.08 }, g).textContent = `Sensor ${n.node_id}${placed ? '' : ' (Lage unbekannt)'}`;
+  }
+}
+
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+// Ordnet die Erkennungen eines Frames den bestehenden Spuren zu (nächster Nachbar)
+// und glättet die Position, statt jedem Sprung von RuView zu folgen.
+function updateTracks(detections) {
+  const alpha = Number($('smoothing').value);
+  const free = [...detections];
+  for (const t of tracks) {
+    let best = -1;
+    for (let i = 0; i < free.length; i++) {
+      const d = dist(t.pos, free[i]);
+      if (d < MATCH_RADIUS_M && (best < 0 || d < dist(t.pos, free[best]))) best = i;
+    }
+    if (best >= 0) {
+      const [d] = free.splice(best, 1);
+      t.pos = [t.pos[0] + alpha * (d[0] - t.pos[0]), t.pos[1] + alpha * (d[1] - t.pos[1])];
+      t.hits++;
+      t.misses = 0;
+    } else {
+      t.misses++;
+    }
+  }
+  for (const d of free) tracks.push({ pos: d, hits: 1, misses: 0, points: [] });
+  for (let i = tracks.length - 1; i >= 0; i--) {
+    if (tracks[i].misses > MAX_MISSES) {
+      const t = tracks[i];
+      t.halo?.remove(); t.dot?.remove(); t.label?.remove(); t.trail?.remove();
+      tracks.splice(i, 1);
+    }
   }
 }
 
 function drawPersons(persons) {
   const g = $('persons');
   const trails = $('trails');
-  const seen = new Set();
+  // Position [0,0,0] heißt bei RuView: keine Spitze in der Signalkarte gefunden.
+  const detections = persons
+    .filter((p) => p.position && !p.position.every((v) => v === 0))
+    .map((p) => toPlan(p.position));
+  updateTracks(detections);
 
-  for (const p of persons) {
-    // Position [0,0,0] heißt bei RuView: keine Spitze in der Signalkarte gefunden.
-    if (!p.position || p.position.every((v) => v === 0)) continue;
-    const pt = toPlan(p.position);
-    seen.add(p.id);
-    let t = tracks.get(p.id);
-    if (!t) {
-      t = { points: [] };
+  const confirmed = [];
+  for (const t of tracks) {
+    if (t.hits < CONFIRM_HITS) continue;
+    if (!t.dot) {
+      t.no = nextTrackNo++;
       t.halo = el('circle', { class: 'person-halo', r: 0.42 }, g);
       t.dot = el('circle', { class: 'person', r: 0.16 }, g);
       t.label = el('text', { class: 'person-label', 'text-anchor': 'middle' }, g);
       t.trail = el('polyline', { class: 'trail' }, trails);
-      tracks.set(p.id, t);
     }
+    const pt = t.pos;
     t.points.push(pt);
     if (t.points.length > TRAIL_LEN) t.points.shift();
     for (const c of [t.halo, t.dot]) { c.setAttribute('cx', pt[0]); c.setAttribute('cy', pt[1]); }
+    // Bei Aussetzern verblassen, statt sofort zu verschwinden.
+    const fade = String(1 - t.misses / (MAX_MISSES + 1));
+    for (const c of [t.halo, t.dot, t.label]) c.style.opacity = fade;
     t.label.setAttribute('x', pt[0]);
     t.label.setAttribute('y', pt[1] - 0.5);
-    t.label.textContent = `#${p.id}`;
+    t.label.textContent = `Person ${t.no}`;
     t.trail.setAttribute('points', $('show-trails').checked ? t.points.map((q) => q.join(',')).join(' ') : '');
+    if (t.misses === 0) confirmed.push(pt);
   }
-
-  for (const [id, t] of tracks) {
-    // RuView vergibt bei jedem Neuerkennen neue IDs; Verschwundene sofort entfernen.
-    if (!seen.has(id)) {
-      t.halo.remove(); t.dot.remove(); t.label.remove(); t.trail.remove();
-      tracks.delete(id);
-    }
-  }
-  return persons.filter((p) => seen.has(p.id)).map((p) => toPlan(p.position));
+  return confirmed;
 }
 
 function updateRooms(points) {
@@ -197,6 +286,8 @@ function render(data) {
   $('confidence').textContent = `Konfidenz ${Math.round((cls.confidence ?? 0) * 100)} %`;
   $('age').textContent = data.age_ms != null ? `vor ${Math.round(data.age_ms)} ms` : '';
 
+  lastNodeId = data.nodes?.[0]?.node_id ?? lastNodeId;
+  updateOrigin(data.nodes);
   drawField(data.signal_field);
   drawNodes(data.nodes);
   const points = drawPersons(persons);
@@ -266,7 +357,9 @@ async function loadPlan() {
 
 async function start() {
   plan = await loadPlan();
+  origin = plan.ruview_origin ?? [plan.width / 2, plan.height / 2];
   buildPlan();
+  setupSensorPlacement();
   if (useMock) {
     setSource('mock');
     const t0 = performance.now();

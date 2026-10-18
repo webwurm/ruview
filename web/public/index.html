@@ -24,6 +24,14 @@
         <h2>Grundriss</h2>
         <label class="toggle"><input type="checkbox" id="show-field"> Signalkarte</label>
         <label class="toggle"><input type="checkbox" id="show-trails"> Spuren</label>
+        <label class="toggle" title="Links: ruhig, rechts: folgt jedem Sprung">Glättung
+          <input type="range" id="smoothing" min="0.05" max="1" step="0.05" value="0.2"></label>
+        <button type="button" id="place-sensor">Sensor setzen</button>
+      </div>
+      <p class="hint" id="place-hint" hidden>Klick in den Grundriss, wo der Sensor steht.</p>
+      <div class="hint" id="sensor-snippet" hidden>
+        Gespeichert in diesem Browser. Damit es überall gilt, diese Zeile in
+        <code>demo-config/floorplan.json</code> ergänzen: <code></code>
       </div>
       <svg id="plan" role="img" aria-label="Grundriss mit erkannten Personen"></svg>
       <p class="legend">
