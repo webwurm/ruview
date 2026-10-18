@@ -8,6 +8,7 @@ const TRAIL_LEN = 24;
 const MATCH_RADIUS_M = 2.5;   // so weit darf eine Erkennung vom letzten Punkt entfernt sein
 const CONFIRM_HITS = 3;       // erst nach so vielen Treffern als Person zählen
 const MAX_MISSES = 4;         // nach so vielen Aussetzern (je 0,5 s) verwerfen
+const MERGE_RADIUS_M = 1.0;   // näher beieinander ist für uns dieselbe Person
 const SENSOR_KEY = 'ruview-demo-sensor';
 const SPARK_SECONDS = 60;
 const COUNT_WINDOW_MS = 10000; // Personenzahl über so viele ms mitteln
@@ -221,9 +222,13 @@ function updateTracks(detections) {
     }
   }
   for (const d of free) tracks.push({ pos: d, hits: 1, misses: 0, points: [] });
+  // RuView findet für eine Person oft mehrere Spitzen dicht nebeneinander.
+  // Davon bleibt die Spur mit den meisten Treffern.
+  tracks.sort((a, b) => b.hits - a.hits);
   for (let i = tracks.length - 1; i >= 0; i--) {
-    if (tracks[i].misses > MAX_MISSES) {
-      const t = tracks[i];
+    const t = tracks[i];
+    const merged = tracks.some((o, j) => j < i && dist(o.pos, t.pos) < MERGE_RADIUS_M);
+    if (merged || t.misses > MAX_MISSES) {
       t.halo?.remove(); t.dot?.remove(); t.label?.remove(); t.trail?.remove();
       tracks.splice(i, 1);
     }
