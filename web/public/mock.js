@@ -38,7 +38,8 @@ export function mockLatest(t) {
   return {
     age_ms: 40,
     classification: { presence: true, motion_level: 'present_moving', confidence: 0.55 + 0.1 * Math.sin(t) },
-    estimated_persons: persons.length,
+    // Wie echt mit drei unkalibrierten Sensoren: springt zwischen 1 und 5.
+    estimated_persons: 1 + Math.floor(Math.random() * 3) + (Math.random() < 0.3 ? 2 : 0),
     features: {
       mean_rssi: -38 + Math.sin(t * 0.3),
       motion_band_power: motion,
@@ -46,7 +47,8 @@ export function mockLatest(t) {
       variance: 9 + Math.sin(t),
       dominant_freq_hz: 0.25,
     },
-    nodes: [{ node_id: 1, position: [2.0, 0.0, 1.5], rssi_dbm: -38 }],
+    // Ohne SENSING_NODE_POSITIONS meldet RuView jeden Sensor an derselben Stelle.
+    nodes: [1, 2, 3].map((id) => ({ node_id: id, position: [2.0, 0.0, 1.5], rssi_dbm: -38 - id })),
     persons,
     signal_field: { grid_size: [FIELD_N, 1, FIELD_N], values },
   };

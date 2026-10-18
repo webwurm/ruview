@@ -9,6 +9,7 @@ const CONFIRM_HITS = 3;       // erst nach so vielen Treffern als Person zählen
 const MAX_MISSES = 4;         // nach so vielen Aussetzern (je 0,5 s) verwerfen
 const SENSOR_KEY = 'ruview-demo-sensor';
 const SPARK_SECONDS = 60;
+const COUNT_WINDOW_MS = 10000; // Personenzahl über so viele ms mitteln
 
 // RuView rechnet Signalkarten-Zellen so in Meter um (field_localize.rs).
 const FIELD_X_SCALE = 0.6;
@@ -26,11 +27,12 @@ const useMock = new URLSearchParams(location.search).has('mock');
 const $ = (id) => document.getElementById(id);
 
 let plan;
-let origin = [0, 0];      // wo RuViews Nullpunkt im Grundriss liegt
+let origin = [0, 0];      // wo RuViews Nullpunkt im Grundriss liegt (ruview_origin)
 let placing = false;      // Sensor wird gerade per Klick gesetzt
 let nextTrackNo = 1;
 const tracks = [];        // { no, pos: [x,y], hits, misses, points, SVG-Elemente }
 const motionHistory = []; // [timestamp, motion_band_power]
+const countHistory = [];  // [timestamp, estimated_persons]
 
 function el(name, attrs = {}, parent) {
   const node = document.createElementNS(SVG_NS, name);
@@ -44,27 +46,20 @@ function toPlan([x, , z]) {
   return [origin[0] + x, origin[1] + z];
 }
 
-// Wo steht der Sensor? Lokal gesetzt (Klick) vor floorplan.json vor gar nicht.
-function sensorPlacement() {
+// Wo stehen die Sensoren? Im Browser gesetzt (Klick) vor floorplan.json.
+// RuView kennt die Standorte nicht: ohne Angabe meldet es alle Sensoren an derselben Stelle.
+function savedPlacements() {
   try {
     const saved = JSON.parse(localStorage.getItem(SENSOR_KEY));
     if (Array.isArray(saved)) return saved;
   } catch { /* kein gespeicherter Wert */ }
-  return plan.sensors ?? [];
+  return [];
 }
 
-// Liegt ein Sensor im Grundriss fest, wird RuViews Koordinatensystem so verschoben,
-// dass RuViews Sensorposition genau dort landet. Sonst gilt ruview_origin.
-function updateOrigin(nodes = []) {
-  const placed = sensorPlacement();
-  for (const n of nodes) {
-    const s = placed.find((p) => p.node_id === n.node_id);
-    if (s && n.position) {
-      origin = [s.position[0] - n.position[0], s.position[1] - n.position[2]];
-      return;
-    }
-  }
-  origin = plan.ruview_origin ?? [plan.width / 2, plan.height / 2];
+function sensorPlacement() {
+  const byId = new Map((plan.sensors ?? []).map((s) => [s.node_id, s]));
+  for (const s of savedPlacements()) byId.set(s.node_id, s);
+  return [...byId.values()].sort((a, b) => a.node_id - b.node_id);
 }
 
 function svgPoint(evt) {
@@ -73,8 +68,28 @@ function svgPoint(evt) {
   return [Math.round(pt.x * 10) / 10, Math.round(pt.y * 10) / 10];
 }
 
+const knownNodes = new Set();
+
+// Auswahlliste mit allen Sensoren, die RuView meldet oder die schon gesetzt sind.
+function updateNodeSelect(nodes = []) {
+  const before = knownNodes.size;
+  for (const n of nodes) knownNodes.add(n.node_id);
+  for (const s of sensorPlacement()) knownNodes.add(s.node_id);
+  if (knownNodes.size === before && before > 0) return;
+  const select = $('place-node');
+  const current = Number(select.value);
+  select.replaceChildren(...[...knownNodes].sort((a, b) => a - b).map((id) => {
+    const o = document.createElement('option');
+    o.value = id;
+    o.textContent = `Sensor ${id}`;
+    return o;
+  }));
+  if (knownNodes.has(current)) select.value = current;
+}
+
 function setupSensorPlacement() {
   const btn = $('place-sensor');
+  const select = $('place-node');
   btn.addEventListener('click', () => {
     placing = !placing;
     btn.classList.toggle('active', placing);
@@ -85,15 +100,20 @@ function setupSensorPlacement() {
     placing = false;
     btn.classList.remove('active');
     $('place-hint').hidden = true;
-    const sensors = [{ node_id: lastNodeId ?? 1, position: svgPoint(evt) }];
-    try { localStorage.setItem(SENSOR_KEY, JSON.stringify(sensors)); } catch { /* nur für diese Sitzung */ }
-    plan.sensors = sensors;
+    const nodeId = Number(select.value);
+    const local = savedPlacements().filter((s) => s.node_id !== nodeId);
+    local.push({ node_id: nodeId, position: svgPoint(evt) });
+    try { localStorage.setItem(SENSOR_KEY, JSON.stringify(local)); } catch { /* nur für diese Sitzung */ }
+    if (!savedPlacements().length) plan.sensors = [...(plan.sensors ?? []).filter((s) => s.node_id !== nodeId), local.at(-1)];
+    // Gleich den nächsten noch nicht gesetzten Sensor vorwählen.
+    const placed = new Set(sensorPlacement().map((s) => s.node_id));
+    const next = [...knownNodes].sort((a, b) => a - b).find((id) => !placed.has(id));
+    if (next != null) select.value = next;
     const snippet = $('sensor-snippet');
     snippet.hidden = false;
-    snippet.querySelector('code:last-of-type').textContent = `"sensors": ${JSON.stringify(sensors)}`;
+    snippet.querySelector('code:last-of-type').textContent = `"sensors": ${JSON.stringify(sensorPlacement())}`;
   });
 }
-let lastNodeId = null;
 
 function pointInPolygon([px, py], polygon) {
   let inside = false;
@@ -156,11 +176,24 @@ function drawField(field) {
 function drawNodes(nodes = []) {
   const g = $('nodes');
   g.replaceChildren();
-  for (const n of nodes) {
-    const [x, y] = toPlan(n.position ?? [0, 0, 0]);
-    const placed = sensorPlacement().some((p) => p.node_id === n.node_id);
-    el('rect', { class: 'node', x: x - 0.12, y: y - 0.12, width: 0.24, height: 0.24, rx: 0.05 }, g);
-    el('text', { class: 'node-label', x: x + 0.2, y: y + 0.08 }, g).textContent = `Sensor ${n.node_id}${placed ? '' : ' (Lage unbekannt)'}`;
+  const placed = new Map(sensorPlacement().map((s) => [s.node_id, s.position]));
+  const online = new Set(nodes.map((n) => n.node_id));
+  let unplaced = 0;
+  for (const id of [...new Set([...online, ...placed.keys()])].sort((a, b) => a - b)) {
+    let x, y, label = `Sensor ${id}`;
+    if (placed.has(id)) {
+      [x, y] = placed.get(id);
+    } else {
+      // RuView meldet ungesetzte Sensoren alle am selben Punkt; untereinander zeigen.
+      const n = nodes.find((m) => m.node_id === id);
+      [x, y] = toPlan(n.position ?? [0, 0, 0]);
+      y += unplaced++ * 0.45;
+      label += ' (Lage unbekannt)';
+    }
+    if (!online.has(id)) label += ' (offline)';
+    const grp = el('g', { class: online.has(id) ? '' : 'offline' }, g);
+    el('rect', { class: 'node', x: x - 0.12, y: y - 0.12, width: 0.24, height: 0.24, rx: 0.05 }, grp);
+    el('text', { class: 'node-label', x: x + 0.2, y: y + 0.08 }, grp).textContent = label;
   }
 }
 
@@ -286,16 +319,23 @@ function render(data) {
   $('confidence').textContent = `Konfidenz ${Math.round((cls.confidence ?? 0) * 100)} %`;
   $('age').textContent = data.age_ms != null ? `vor ${Math.round(data.age_ms)} ms` : '';
 
-  lastNodeId = data.nodes?.[0]?.node_id ?? lastNodeId;
-  updateOrigin(data.nodes);
+  updateNodeSelect(data.nodes);
   drawField(data.signal_field);
   drawNodes(data.nodes);
   const points = drawPersons(persons);
   updateRooms(points);
 
-  $('est-persons').textContent = data.estimated_persons ?? '–';
+  // RuView nimmt den höchsten Wert aller Sensoren; ein einzelner Ausreißer zählt sonst sofort.
+  countHistory.push([now, data.estimated_persons ?? 0]);
+  while (now - countHistory[0][0] > COUNT_WINDOW_MS) countHistory.shift();
+  const counts = countHistory.map(([, c]) => c);
+  const avg = Math.round(counts.reduce((a, b) => a + b, 0) / counts.length);
+  const lo = Math.min(...counts);
+  const hi = Math.max(...counts);
+  $('est-persons').textContent = avg;
+  $('est-range').textContent = lo === hi ? 'geschätzte Anzahl' : `geschätzt, schwankt ${lo} bis ${hi}`;
   $('tracked-persons').textContent = points.length;
-  $('count-warn').hidden = data.estimated_persons == null || data.estimated_persons === points.length;
+  $('count-warn').hidden = avg === points.length;
 
   const f = data.features ?? {};
   motionHistory.push([now, f.motion_band_power ?? 0]);

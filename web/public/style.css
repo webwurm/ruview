@@ -73,7 +73,8 @@ aside { display: flex; flex-direction: column; gap: 16px; }
 .plan-head { display: flex; align-items: center; gap: 16px; }
 .plan-head h2 { margin: 0; margin-right: auto; }
 .plan-head { flex-wrap: wrap; }
-#place-sensor {
+.place { display: flex; gap: 6px; }
+#place-sensor, #place-node {
   font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--card); color: var(--text); cursor: pointer;
 }
@@ -93,6 +94,7 @@ aside { display: flex; flex-direction: column; gap: 16px; }
 #plan .trail { fill: none; stroke: var(--person); stroke-width: .04; opacity: .35; }
 #plan .node { fill: var(--node); }
 #plan .node-label { font-size: .22px; fill: var(--node); }
+#plan .offline { opacity: .45; }
 .legend { margin: 10px 0 0; font-size: 13px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .dot.person { background: var(--person); }

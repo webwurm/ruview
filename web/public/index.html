@@ -26,9 +26,12 @@
         <label class="toggle"><input type="checkbox" id="show-trails"> Spuren</label>
         <label class="toggle" title="Links: ruhig, rechts: folgt jedem Sprung">Glättung
           <input type="range" id="smoothing" min="0.05" max="1" step="0.05" value="0.2"></label>
-        <button type="button" id="place-sensor">Sensor setzen</button>
+        <span class="place">
+          <select id="place-node" aria-label="Welcher Sensor"><option value="1">Sensor 1</option></select>
+          <button type="button" id="place-sensor">Sensor setzen</button>
+        </span>
       </div>
-      <p class="hint" id="place-hint" hidden>Klick in den Grundriss, wo der Sensor steht.</p>
+      <p class="hint" id="place-hint" hidden>Klick in den Grundriss, wo dieser Sensor steht.</p>
       <div class="hint" id="sensor-snippet" hidden>
         Gespeichert in diesem Browser. Damit es überall gilt, diese Zeile in
         <code>demo-config/floorplan.json</code> ergänzen: <code></code>
@@ -52,7 +55,7 @@
       <section class="card">
         <h2>Personen</h2>
         <div class="pair">
-          <div><div class="big" id="est-persons">–</div><div class="meta">geschätzte Anzahl</div></div>
+          <div><div class="big" id="est-persons">–</div><div class="meta" id="est-range">geschätzte Anzahl</div></div>
           <div><div class="big" id="tracked-persons">–</div><div class="meta">verfolgte Positionen</div></div>
         </div>
         <p class="warn" id="count-warn" hidden>Die beiden Werte widersprechen sich. RuView zählt und verortet getrennt.</p>
@@ -71,7 +74,7 @@
 
       <details class="card honest">
         <summary>Wie belastbar ist das?</summary>
-        <p>Mit einem Sensor misst RuView vor allem, <em>ob</em> sich etwas bewegt. Die Positionen stammen aus Spitzen der Signalkarte, und die ordnet Subträger nur Winkeln zu, nicht echten Orten. Echte Ortung braucht drei oder mehr Sensoren und Kalibrierung. Namen erkennt RuView nicht.</p>
+        <p>Mit einem Sensor misst RuView vor allem, <em>ob</em> sich etwas bewegt. Die Positionen stammen aus Spitzen der Signalkarte, und die ordnet Subträger nur Winkeln zu, nicht echten Orten. Das gilt auch mit mehreren Sensoren: RuView verortet nicht über die Sensorstandorte, die Punkte im Plan sind also nur grob. Bei mehreren Sensoren nimmt RuView als Anzahl den höchsten Wert eines Sensors, ohne Kalibrierung schwankt sie deshalb nach oben. Die Demo zeigt den Mittelwert der letzten 10 Sekunden. Namen erkennt RuView nicht.</p>
       </details>
     </aside>
   </main>
