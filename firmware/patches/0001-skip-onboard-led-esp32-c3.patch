@@ -1,0 +1,31 @@
+--- a/main/main.c
++++ b/main/main.c
+@@ -363,7 +363,9 @@
+      * common module). On C6, GPIO 38/48 don't exist (only 0-30) — gate by target.
+      * Behaviour is set by CONFIG_LED_GAMMA_VIZ (ADR-183): on = 40 Hz gamma flicker
+      * coloured by CSI motion; off = clear the LED at boot. */
+-#if defined(CONFIG_IDF_TARGET_ESP32C6)
++#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32C3)
++    const int led_gpio = -1; /* no onboard WS2812 on common WROOM-32 / C3 boards */
++#elif defined(CONFIG_IDF_TARGET_ESP32C6)
+     const int led_gpio = 8;
+ #else
+     const int led_gpio = 48;
+@@ -380,7 +382,7 @@
+         .flags.with_dma = false,
+     };
+ #if CONFIG_LED_GAMMA_VIZ
+-    if (led_strip_new_rmt_device(&strip_config, &rmt_config, &s_viz_led) == ESP_OK) {
++    if (led_gpio >= 0 && led_strip_new_rmt_device(&strip_config, &rmt_config, &s_viz_led) == ESP_OK) {
+         const esp_timer_create_args_t viz_args = {
+             .callback = &led_gamma_40hz_cb,
+             .name = "led_gamma_40hz",
+@@ -394,7 +396,7 @@
+ #else
+     /* Viz disabled — clear the onboard LED at boot and release the RMT channel. */
+     led_strip_handle_t led_strip;
+-    if (led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip) == ESP_OK) {
++    if (led_gpio >= 0 && led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip) == ESP_OK) {
+         led_strip_clear(led_strip);
+         led_strip_del(led_strip);
+     }

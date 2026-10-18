@@ -76,4 +76,4 @@ wechseln häufig, und `estimated_persons` passt oft nicht zur Länge von `person
 - Ein einzelner Sensor erkennt vor allem Anwesenheit und Bewegung entlang einer Funkstrecke.
   Für Positionen braucht es 3 oder mehr räumlich verteilte Sensoren plus Kalibrierung.
 - Personen namentlich zu unterscheiden ist laut RuView mit WLAN allein derzeit nicht möglich.
-- ESP32-C3 wird von der RuView-Firmware nicht unterstützt (nur ESP32-S3 und ESP32-C6).
+- ESP32 (klassisch) und ESP32-C3 werden von RuView offiziell nicht unterstützt; [`firmware/`](firmware/) baut die Firmware experimentell auch für diese Chips.
