@@ -23,6 +23,7 @@
       <div class="plan-head">
         <h2>Grundriss</h2>
         <label class="toggle"><input type="checkbox" id="show-field"> Signalkarte</label>
+        <label class="toggle"><input type="checkbox" id="show-points"> RuView-Punkte</label>
         <label class="toggle"><input type="checkbox" id="show-trails"> Spuren</label>
         <label class="toggle" title="Links: ruhig, rechts: folgt jedem Sprung">Glättung
           <input type="range" id="smoothing" min="0.05" max="1" step="0.05" value="0.2"></label>
@@ -38,8 +39,9 @@
       </div>
       <svg id="plan" role="img" aria-label="Grundriss mit erkannten Personen"></svg>
       <p class="legend">
-        <span class="dot person"></span> Person (RuView-Schätzung)
+        <span class="dot activity"></span> Bewegung, die ein Sensor sieht
         <span class="dot node"></span> Sensor
+        <span class="dot person"></span> RuView-Punkt (nur grob)
       </p>
     </section>
 

@@ -17,6 +17,10 @@ const COUNT_WINDOW_MS = 10000; // Personenzahl über so viele ms mitteln
 const FIELD_X_SCALE = 0.6;
 const FIELD_Z_SCALE = 0.5;
 
+// Wie stark ein Sensor Bewegung meldet; bestimmt die Deckkraft seines Kreises.
+const LEVEL_RANK = { absent: 0, present_still: 1, present_moving: 2, active: 3 };
+const SENSOR_REACH_M = 2.5;   // grober Bereich, den ein Sensor um sich herum sieht
+
 const MOTION_LABELS = {
   absent: 'Niemand da',
   present_still: 'Anwesend, ruhig',
@@ -35,6 +39,7 @@ let nextTrackNo = 1;
 const tracks = [];        // { no, pos: [x,y], hits, misses, points, SVG-Elemente }
 const motionHistory = []; // [timestamp, motion_band_power]
 const countHistory = [];  // [timestamp, estimated_persons]
+let nodeInfo = new Map(); // node_id -> Eintrag aus /api/v1/nodes
 
 function el(name, attrs = {}, parent) {
   const node = document.createElementNS(SVG_NS, name);
@@ -194,6 +199,11 @@ function drawNodes(nodes = []) {
     }
     if (!online.has(id)) label += ' (offline)';
     const grp = el('g', { class: online.has(id) ? '' : 'offline' }, g);
+    const level = nodeInfo.get(id)?.motion_level;
+    if (placed.has(id) && level in LEVEL_RANK) {
+      const rank = LEVEL_RANK[level];
+      el('circle', { class: 'activity', cx: x, cy: y, r: SENSOR_REACH_M, opacity: [0.04, 0.14, 0.26, 0.4][rank] }, grp);
+    }
     el('rect', { class: 'node', x: x - 0.12, y: y - 0.12, width: 0.24, height: 0.24, rx: 0.05 }, grp);
     el('text', { class: 'node-label', x: x + 0.2, y: y + 0.08 }, grp).textContent = label;
   }
@@ -270,22 +280,27 @@ function drawPersons(persons) {
   return confirmed;
 }
 
-function updateRooms(points) {
-  const counts = new Map(plan.rooms.map((r) => [r.name, 0]));
-  for (const pt of points) {
-    const name = roomOf(pt);
-    counts.set(name, (counts.get(name) ?? 0) + 1);
+// Räume nach dem, was die Sensoren darin sehen: der stärkste Wert zählt.
+function updateRooms() {
+  const levels = new Map(plan.rooms.map((r) => [r.name, null]));
+  for (const s of sensorPlacement()) {
+    const level = nodeInfo.get(s.node_id)?.motion_level;
+    if (!(level in LEVEL_RANK)) continue;
+    const name = roomOf(s.position);
+    const prev = levels.get(name);
+    if (prev == null || LEVEL_RANK[level] > LEVEL_RANK[prev]) levels.set(name, level);
   }
   for (const room of plan.rooms) {
-    const c = counts.get(room.name);
-    room.shape.classList.toggle('active', c > 0);
-    room.countLabel.textContent = c > 0 ? `${c} ${c === 1 ? 'Person' : 'Personen'}` : '';
+    const level = levels.get(room.name);
+    room.shape.classList.toggle('active', LEVEL_RANK[level] > 0);
+    room.countLabel.textContent = LEVEL_RANK[level] > 0 ? MOTION_LABELS[level] : '';
   }
-  $('rooms').replaceChildren(...[...counts].map(([name, c]) => {
+  $('rooms').replaceChildren(...[...levels].map(([name, level]) => {
     const li = document.createElement('li');
-    li.className = c ? '' : 'empty';
-    li.innerHTML = `<span></span><strong>${c}</strong>`;
+    li.className = LEVEL_RANK[level] > 0 ? '' : 'empty';
+    li.innerHTML = '<span></span><strong></strong>';
     li.firstChild.textContent = name;
+    li.lastChild.textContent = level == null ? 'kein Sensor' : MOTION_LABELS[level];
     return li;
   }));
 }
@@ -329,7 +344,7 @@ function render(data) {
   drawField(data.signal_field);
   drawNodes(data.nodes);
   const points = drawPersons(persons);
-  updateRooms(points);
+  updateRooms();
 
   // RuView nimmt den höchsten Wert aller Sensoren; ein einzelner Ausreißer zählt sonst sofort.
   countHistory.push([now, data.estimated_persons ?? 0]);
@@ -341,7 +356,7 @@ function render(data) {
   $('est-persons').textContent = avg;
   $('est-range').textContent = lo === hi ? 'geschätzte Anzahl' : `geschätzt, schwankt ${lo} bis ${hi}`;
   $('tracked-persons').textContent = points.length;
-  $('count-warn').hidden = avg === points.length;
+  $('count-warn').hidden = !$('show-points').checked || avg === points.length;
 
   const f = data.features ?? {};
   motionHistory.push([now, f.motion_band_power ?? 0]);
@@ -381,12 +396,13 @@ async function pollHealth() {
 
 // Was jeder Sensor selbst zählt. RuView meldet als Gesamtzahl den höchsten dieser Werte.
 function renderNodes(nodes = []) {
+  nodeInfo = new Map(nodes.map((n) => [n.node_id, n]));
   $('per-node').replaceChildren(...nodes.map((n) => {
     const li = document.createElement('li');
     const label = document.createElement('span');
     label.textContent = `Sensor ${n.node_id}${n.status === 'stale' ? ' (keine Daten)' : ''}`;
     const value = document.createElement('strong');
-    value.textContent = `zählt ${n.person_count ?? '–'}`;
+    value.textContent = `${MOTION_LABELS[n.motion_level] ?? n.motion_level ?? '–'}, zählt ${n.person_count ?? '–'}`;
     li.append(label, value);
     return li;
   }));
@@ -426,11 +442,20 @@ async function start() {
   origin = plan.ruview_origin ?? [plan.width / 2, plan.height / 2];
   buildPlan();
   setupSensorPlacement();
+  const showPoints = () => $('plan').classList.toggle('no-points', !$('show-points').checked);
+  $('show-points').addEventListener('change', showPoints);
+  showPoints();
   if (useMock) {
     setSource('mock');
     const t0 = performance.now();
     setInterval(() => render(mockLatest((performance.now() - t0) / 1000)), POLL_MS);
-    renderNodes([1, 2, 3].map((id) => ({ node_id: id, status: 'active', person_count: id === 2 ? 4 : 1 })));
+    const levels = ['present_moving', 'present_still', 'absent', 'active'];
+    const mockNodes = () => renderNodes([1, 2, 3].map((id) => ({
+      node_id: id, status: 'active', person_count: id === 2 ? 4 : 1,
+      motion_level: levels[(id + Math.floor((performance.now() - t0) / 4000)) % levels.length],
+    })));
+    mockNodes();
+    setInterval(mockNodes, NODES_MS);
     return;
   }
   pollHealth();
