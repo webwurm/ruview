@@ -8,6 +8,16 @@ server {
         add_header Cache-Control "no-store";
     }
 
+    # Nach einem Neubau sofort die neuen Dateien laden, nicht die aus dem Browser-Cache.
+    location ~ \.(html|js|css)$ {
+        add_header Cache-Control "no-cache";
+    }
+
+    location = / {
+        add_header Cache-Control "no-cache";
+        try_files /index.html =404;
+    }
+
     location /api/ {
         limit_except GET { deny all; }
         proxy_pass ${RUVIEW_URL};
